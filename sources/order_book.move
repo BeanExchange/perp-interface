@@ -3,9 +3,8 @@ module bean::order_book {
     use sui::object::UID;
     use sui::table::Table;
     use sui::tx_context::TxContext;
-    use sui::transfer::share_object;
-    use sui::object;
-    use bean::vault::AdminCap;
+    use bean::vault::{AdminCap, OrderKeeperCap};
+    use sui::coin::Coin;
 
     const PRICE_PRECISION: u128 = 10 ^ 30; //10 ** 30
     const USDB_PRECISION: u128 = 10 ^ 18; //10 ** 18
@@ -218,15 +217,176 @@ module bean::order_book {
         minExecutionFee: u128
     }
 
-
     fun init(_witness: ORDER_BOOK, ctx: &mut TxContext) {
     }
 
+    ///
+    /// Initialze config, can be executed multiple times
+    ///
     public fun initialize(_adminCap: &AdminCap,
-                          _minExecutionFee: u64,
-                          _minPurchaseTokenAmountUsd: u64,
-                          _orderBook: &mut OrderBook,
-                          _ctx: &mut TxContext){
+                    _minExecutionFee: u64,
+                    _minPurchaseTokenAmountUsd: u64,
+                    _orderBook: &mut OrderBook,
+                    _ctx: &mut TxContext){
+
+    }
+
+    public fun setMinExecutionFee(_adminCap: &AdminCap,
+                                  _minExecutionFee: u64,
+                                  _orderBook: &mut OrderBook,
+                                  _ctx: &mut TxContext){
+
+    }
+
+    public fun setMinPurchaseTokenAmountUsd(_adminCap: &AdminCap,
+                                            _minPurchaseTokenAmountUsd: u64,
+                                            _orderBook: &mut OrderBook,
+                                            _ctx: &mut TxContext){
+
+    }
+
+    ///
+    /// Create limit order
+    ///
+    public fun createSwapOrder<TOKEN_IN, TOKEN_OUT>(_amountIn: Coin<TOKEN_IN>,
+                                                    _minOut: u64,
+                                                    _triggerRatio: u64,
+                                                    _triggerAboveThreshold: bool,
+                                                    _executionFee: u64,
+                                                    _shouldWrap: bool,
+                                                    _shouldUnwrap: bool,
+                                                    _orderBook: &mut OrderBook,
+                                                    _ctx: &mut TxContext){
+
+    }
+
+    public fun cancelMultiple(_swapOrderIndexes: vector<u128>,
+                              _increaseOrderIndexes: vector<u128>,
+                              _decreaseOrderIndexes: vector<u128>,
+                              _orderBook: &mut OrderBook,
+                              _ctx: &mut TxContext){
+
+    }
+
+    public fun cancelSwapOrder(_orderIndex: u128,
+                              _orderBook: &mut OrderBook,
+                              _ctx: &mut TxContext){
+
+    }
+
+    public fun updateSwapOrder(_orderIndex: u128,
+                               _minOut: u128,
+                               _triggerRatio: u128,
+                               _triggerAboveThreshold: bool,
+                               _orderBook: &mut OrderBook,
+                               _ctx: &mut TxContext){
+
+    }
+
+    public fun executeSwapOrder(_orderIndex: u128,
+                                _feeReceiver: address,
+                               _orderBook: &mut OrderBook,
+                               _ctx: &mut TxContext){
+
+    }
+
+    ///
+    /// User increase position:
+    /// - create new /increase one position with INPUT_TOKEN
+    /// - when position is anchored, INPUT_TOKEN will be swap to COL_TOKEN
+    ///
+    public fun increasePosition<INPUT_TOKEN, COL_TOKEN, INDEX_TOKEN>(_purchaseToken: Coin<INPUT_TOKEN>,
+                                                                     _sizeDelta: u128,
+                                                                     _isLong: u128,
+                                                                     _triggerPrice: u128,
+                                                                     _triggerAboveThreshold: bool,
+                                                                     _executionFee: u128,
+                                                                     _orderBook: &mut OrderBook,
+                                                                     _ctx: &mut TxContext){
+
+    }
+
+    ///
+    /// User update their order
+    ///
+    public fun updateIncreasePosition(_orderIndex: u128,
+                                      _sizeDelta: u128,
+                                      _triggerPrice: u128,
+                                      _triggerAboveThreshold: bool,
+                                      _orderBook: &mut OrderBook,
+                                      _ctx: &mut TxContext){
+
+    }
+
+
+    ///
+    /// User cancel their position
+    ///
+    public fun cancelIncreasePosition(_orderIndex: u128,
+                                      _orderBook: &mut OrderBook,
+                                      _ctx: &mut TxContext){
+
+    }
+
+    ///
+    ///Keeper exec order for user
+    ///
+    public fun executeIncreasePosition(_keeperCap: &OrderKeeperCap,
+                                       _forAccount: address,
+                                       _orderIndex: u128,
+                                       _feeReceiver: address,
+                                       _orderBook: &mut OrderBook,
+                                       _ctx: &mut TxContext){
+
+    }
+
+
+    ///
+    /// User create decrease position:
+    /// - create/increase one position with INPUT_TOKEN
+    /// - when position is anchored, INPUT_TOKEN will be swap to COL_TOKEN
+    ///
+    public fun createDecreasePosition<COL_TOKEN, INDEX_TOKEN>(_sizeDelta: u128,
+                                                               _collateralDelta: u128,
+                                                               _isLong: u128,
+                                                               _triggerPrice: u128,
+                                                               _triggerAboveThreshold: bool,
+                                                               _orderBook: &mut OrderBook,
+                                                               _ctx: &mut TxContext){
+
+    }
+
+    ///
+    /// Keeper execute order for account
+    ///
+    public fun executeDecreasePosition<COL_TOKEN, INDEX_TOKEN>(_keeperCap: &OrderKeeperCap,
+                                                               _forAccount: address,
+                                                               _orderIndex: u128,
+                                                               _feeReceiver: address,
+                                                               _orderBook: &mut OrderBook,
+                                                               _ctx: &mut TxContext){
+
+    }
+
+    ///
+    /// User cancel their decrease order
+    ///
+    public fun cancelDecreaseOrder(_orderIndex: u128,
+                                   _orderBook: &mut OrderBook,
+                                   _ctx: &mut TxContext){
+
+    }
+
+    ///
+    /// User update their decrease order
+    ///
+    public fun updateDecreaseOrder(_orderIndex: u128,
+                                   _collateralDelta: u128,
+                                   _sizeDelta: u128,
+                                   _triggerPrice: u128,
+                                   _triggerAboveThreshold: bool,
+                                   _orderBook: &mut OrderBook,
+                                   _ctx: &mut TxContext){
 
     }
 }

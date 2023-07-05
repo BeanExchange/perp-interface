@@ -23,7 +23,11 @@ module bean::vault {
         id: UID,
     }
 
-    struct KeeperCap has key, store{
+    struct OrderKeeperCap has key, store{
+        id: UID,
+    }
+
+    struct PriceKeeperCap has key, store{
         id: UID,
     }
 
