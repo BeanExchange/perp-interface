@@ -3,7 +3,7 @@ module bean::position_manager {
     use sui::object::UID;
     use sui::table::Table;
     use std::type_name::TypeName;
-    use bean::vault::{AdminCap, OrderKeeperCap, XVault};
+    use bean::vault::{AdminCap, OrderKeeperCap, XVault, PartnerCap};
     use sui::coin;
     use sui::coin::Coin;
 
@@ -21,7 +21,6 @@ module bean::position_manager {
         feeReserves: Table<TypeName, u128>,
         maxGlobalLongSizes: Table<TypeName, u128>,
         maxGlobalShortSizes: Table<TypeName, u128>,
-
     }
 
     fun init(_witness: POSITION_MANAGER, ctx: &mut TxContext) {
@@ -74,20 +73,18 @@ module bean::position_manager {
 
     }
 
-    public fun withdrawFees<TOKEN>(_adminCap: &AdminCap,
+    public entry fun withdrawFees<TOKEN>(_adminCap: &AdminCap,
                                    _receiver: address,
                                    _positionReg: &mut PositionRegistry,
-                                   _vault: &mut XVault,
                                    _ctx: &mut TxContext){
 
     }
 
-
     ///
     /// Create market Position
     ///
-    public fun increasePosition<COL_TOKEN, INDEX_TOKEN>(_amountIn: Coin<COL_TOKEN>,
-                                                        _minOut: u128,
+    public entry fun increasePosition1<COL_TOKEN, INDEX_TOKEN>(_partnerCap: &PartnerCap,
+                                                         _amountIn: Coin<COL_TOKEN>,
                                                         _sizeDelta: u128,
                                                         _isLong: bool,
                                                         _price: u128,
@@ -100,7 +97,22 @@ module bean::position_manager {
     ///
     /// Create market Position
     ///
-    public fun decreasePosition<COL_TOKEN, INDEX_TOKEN>(_colateralIn: Coin<COL_TOKEN>,
+    public entry fun increasePosition2<TOKEN_IN, COL_TOKEN, INDEX_TOKEN>(_partnerCap: &PartnerCap,
+                                                                   _amountIn: Coin<TOKEN_IN>,
+                                                                   _minOut: u128,
+                                                                   _sizeDelta: u128,
+                                                                    _isLong: bool,
+                                                                    _price: u128,
+                                                                    _positionReg: &mut PositionRegistry,
+                                                                    _vault: &mut XVault,
+                                                                    _ctx: &mut TxContext){
+
+    }
+    ///
+    /// Create market Position
+    ///
+    public entry fun decreasePosition<COL_TOKEN, INDEX_TOKEN>(_partnerCap: &PartnerCap,
+                                                        _colateralIn: Coin<COL_TOKEN>,
                                                         _collateralDelta: u128,
                                                         _sizeDelta: u128,
                                                         _isLong: bool,
@@ -109,19 +121,6 @@ module bean::position_manager {
                                                         _positionReg: &mut PositionRegistry,
                                                         _vault: &mut XVault,
                                                         _ctx: &mut TxContext){
-
-    }
-
-    ///Keeper liquidate one position
-    public fun liquidatePosition<COL_TOKEN, INDEX_TOKEN>(_orderKeeperCap: &OrderKeeperCap,
-                                                         _forAccount: address,
-                                                         _colateralIn: Coin<COL_TOKEN>,
-                                                         _collateralDelta: u128,
-                                                         _isLong: bool,
-                                                         _receiver: address,
-                                                         _positionReg: &mut PositionRegistry,
-                                                         _vault: &mut XVault,
-                                                         _ctx: &mut TxContext){
 
     }
 }

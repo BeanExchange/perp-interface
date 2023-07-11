@@ -49,6 +49,11 @@ module bean::vault {
         id: UID,
     }
 
+    struct PartnerCap has key, store{
+        id: UID,
+    }
+
+
     struct Position has copy, store{
         size: u128, //total pos size, in value
         collateral: u128, //total pos col, in value
@@ -212,7 +217,9 @@ module bean::vault {
         amount: u256,
     }
 
-    struct Config has copy, store{
+    struct XVault has key, store {
+        id: UID,
+        //config params
         isInitialized: bool,
         isSwapEnabled: bool, //default enabled
         isLeverageEnabled: bool, //default enabled
@@ -235,14 +242,7 @@ module bean::vault {
         inManagerMode: bool, //false
         inPrivateLiquidationMode: bool, //false
         maxGasPrice: u128, //
-        usdb: TypeName,
-    }
-
-    struct XVault has key, store {
-        id: UID,
-        isInitialized: bool,
-        config: Config,
-
+        usdbType: TypeName,
         allWhitelistedTokens: vector<TypeName>,
         whitelistedTokenCount: u128, //0
         whitelistedTokens: Table<TypeName, bool>,
@@ -251,6 +251,7 @@ module bean::vault {
         stableTokens: Table<TypeName, bool>,
         shortableTokens: Table<TypeName, bool>,
 
+        //vault resources
         tokenBalances0: Bag, // track all transfer in tokens, maps of type ==> coin
         tokenBalances: Table<TypeName, u128>, // tokenBalances is used only to determine _transferIn values
         tokenWeights: Table<TypeName, u128>, // tokenWeights allows customisation of index composition
@@ -286,53 +287,59 @@ module bean::vault {
         globalShortSizes: Table<TypeName, u128>,
         globalShortAveragePrices: Table<TypeName, u128>,
         maxGlobalShortSizes: Table<TypeName, u128>,
-        errors: Table<u128, vector<u8>>,
-        usdb: Coin<USDB>,
+        errors: Table<u128, vector<u8>>, //@todo remove later
+        usdbDebt: Coin<USDB>,
     }
 
-    public fun initialize(_adminCap: &AdminCap,
+    public entry fun initialize(_adminCap: &AdminCap,
                           liquidationFeeUsd: u128,
                           fundingInterval: u128,
                           fundingRateFactor: u128,
                           stableFundingRateFactor: u128,
                           vault: &mut XVault,
                           _ctx: &mut TxContext){
+        assert!(!vault.isInitialized, ErrInitialized);
+        vault.isInitialized = true;
+        vault.liquidationFeeUsd = liquidationFeeUsd;
+        vault.fundingInterval = fundingInterval;
+        vault.fundingRateFactor = fundingRateFactor;
+        vault.stableFundingRateFactor = stableFundingRateFactor;
     }
 
     ///
     /// Enable/disable swap
     ///
-    public fun setIsSwapEnabled(_adminCap: &AdminCap,
+    public entry fun setSwapEnabled(_adminCap: &AdminCap,
                                 isSwapEnabled: bool,
                                 vault: &mut XVault,
                                 _ctx: &mut TxContext){
-        vault.config.isSwapEnabled = isSwapEnabled;
+        vault.isSwapEnabled = isSwapEnabled;
     }
 
     ///
     /// Enable/disable leverage
     ///
-    public fun setIsLeverageEnabled(_adminCap: &AdminCap,
+    public entry fun setLeverageEnabled(_adminCap: &AdminCap,
                                     isLeverageEnabled: bool,
                                     vault: &mut XVault,
                                     _ctx: &mut TxContext){
-        vault.config.isLeverageEnabled = isLeverageEnabled;
+        vault.isLeverageEnabled = isLeverageEnabled;
     }
 
     ///
     /// Set max leverage
     ///
-    public fun setMaxLeverage(_adminCap: &AdminCap,
+    public entry fun setMaxLeverage(_adminCap: &AdminCap,
                               maxLeverage: u128,
                               vault: &mut XVault){
         assert!(maxLeverage >= MIN_LEVERAGE);
-        vault.config.maxLeverage = maxLeverage;
+        vault.maxLeverage = maxLeverage;
     }
 
     ///
     /// set max buffer amount
     ///
-    public fun setBufferAmount<TOKEN>(_adminCap: &AdminCap,
+    public entry fun setBufferAmount<TOKEN>(_adminCap: &AdminCap,
                                       amount: u128,
                                       vault: &mut XVault){
     }
@@ -340,7 +347,7 @@ module bean::vault {
     ///
     /// Set max global sort size
     ///
-    public fun setMaxGlobalShortSize<TOKEN>(_adminCap: &AdminCap,
+    public entry fun setMaxGlobalShortSize<TOKEN>(_adminCap: &AdminCap,
                                             amount: u128,
                                             vault: &mut XVault,
                                             _ctx: &mut TxContext){
@@ -349,7 +356,7 @@ module bean::vault {
     ///
     /// Set fees
     ///
-    public fun setFees<TOKEN>(_adminCap: &AdminCap,
+    public entry fun setFees<TOKEN>(_adminCap: &AdminCap,
                               taxBasisPoints: u128,
                               stableTaxBasisPoints: u128,
                               mintBurnFeeBasisPoints: u128,
@@ -361,7 +368,6 @@ module bean::vault {
                               hasDynamicFees: bool,
                               vault: &mut XVault,
                               _ctx: &mut TxContext){
-
     }
 
     ///
@@ -370,18 +376,19 @@ module bean::vault {
     ///
     /// Set fund rate config
     ///
-    public fun setFundingRate<TOKEN>(_adminCap: &AdminCap,
+    public entry fun setFundingRate<TOKEN>(_adminCap: &AdminCap,
                                      fundingInterval: u128,
                                      fundingRateFactor: u128,
                                      stableFundingRateFactor: u128,
                                      vault: &mut XVault,
                                      _ctx: &mut TxContext){
+
     }
 
     ///
     /// Set config of token
     ///
-    public fun setTokenConfig<TOKEN>(_adminCap: &AdminCap,
+    public entry fun setTokenConfig<TOKEN>(_adminCap: &AdminCap,
                                      tokenDecimals: u128,
                                      tokenWeight: u128,
                                      minProfitBps: u128,
@@ -396,7 +403,7 @@ module bean::vault {
     ///
     /// clear config of tokens
     ///
-    public fun clearTokenConfig<TOKEN>(_adminCap: &AdminCap,
+    public entry fun clearTokenConfig<TOKEN>(_adminCap: &AdminCap,
                                        vault: &mut XVault,
                                        _ctx: &mut TxContext){
     }
@@ -405,7 +412,7 @@ module bean::vault {
     ///
     /// Withdraw fee
     ///
-    public fun withdrawFees<TOKEN>(_adminCap: &AdminCap,
+    public entry fun withdrawFees<TOKEN>(_adminCap: &AdminCap,
                                    receiver: address,
                                    vault: &mut XVault,
                                    ctx: &mut TxContext){
@@ -415,10 +422,11 @@ module bean::vault {
     ///
     /// Set usdb amount of token
     ///
-    public fun setUsdbAmount<TOKEN>(_adminCap: &AdminCap,
+    public entry fun setUsdbAmount<TOKEN>(_adminCap: &AdminCap,
                                     amount: u128,
                                     vault: &mut XVault,
                                     _ctx: &mut TxContext){
+
     }
 
 
@@ -432,6 +440,7 @@ module bean::vault {
     fun  directPoolDeposit<TOKEN>(token: Coin<TOKEN>,
                                   vault: &mut XVault,
                                   ctx: &mut TxContext){
+
     }
 
     ///
@@ -443,7 +452,8 @@ module bean::vault {
     /// - mint more usdb debt with amount after fee
     ///
     public fun buyUsdb<TOKEN>(token: Coin<TOKEN>, vault: &mut XVault, _ctx: &mut TxContext): u256{
-    };
+
+    }
 
     ///
     /// Sell usdb to retrieve back one token:
@@ -538,11 +548,11 @@ module bean::vault {
     /// Utils functions
     ///
     public fun usdbBalance(vault: &XVault): u64{
-        coin::value(&vault.usdb)
+        coin::value(&vault.usdbDebt)
     }
 
     public fun mintUsdbDebt(vault: &mut XVault, more: Coin<USDB>){
-        coin::join(&mut vault.usdb, more);
+        coin::join(&mut vault.usdbDebt, more);
     }
 
 
@@ -560,6 +570,7 @@ module bean::vault {
     /// - return amount after fee
     ///
     fun collectSwapFees(token: TypeName, amount: u128, feeBasisPoints: u128, vault: &mut XVault): u128 {
+        0u128
     }
 
     ///
@@ -605,23 +616,29 @@ module bean::vault {
     }
 
     fun initZeroTokenBalances0<TOKEN>(vault: &mut XVault, ctx: &mut TxContext){
+
     }
 
     fun increasePoolAmount<TOKEN>(token: Coin<TOKEN>, vault: &mut XVault, ctx: &mut TxContext){
+
     }
 
     fun decreasePoolAmount<TOKEN>(token: Coin<TOKEN>, vault: &mut XVault, ctx: &mut TxContext){
+
     }
 
     fun validateWhitelistedToken<TOKEN>(vault: &XVault){
+
     }
 
     fun transferIn<TOKEN>(token: Coin<TOKEN>, vault: &mut XVault){
     }
 
     fun adjustForDecimals(amount: u128 , tokenDiv: TypeName,  tokenMul: TypeName, vault: &XVault): u128 {
+       0u128
     }
 
-    fun  tokenToUsdMin(token: TypeName, tokenAmount: u128, vault: &mut XVault): u128 {
+    fun tokenToUsdMin(token: TypeName, tokenAmount: u128, vault: &mut XVault): u128 {
+      0u128
     }
 }

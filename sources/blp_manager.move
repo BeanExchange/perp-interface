@@ -108,43 +108,12 @@ module bean::blp_manager {
     /// - user get back Blp
     ///
     public entry fun addLiquidity<TOKEN>(token: Coin<TOKEN>,
-                                         minUsdx: u128,
+                                         minUsdb: u128,
                                          minGlp: u128,
                                          registry: &mut BlpManagerReg,
                                          xvault: &mut XVault,
                                          sclock: &Clock,
                                          ctx: &mut TxContext){
-        let amount = (coin::value(&token) as u128);
-        assert!(amount > 0, ErrInvalidAmt);
-
-        let aumInUsdx = getAumInUsdb(true);
-        let blpSupply = (coin::total_supply(option::borrow(&registry.blpTreasuryCap)) as u128);
-
-        let usdxAmount = vault::buyUsdb(token, xvault, ctx);
-
-        assert!(usdxAmount >= minUsdx, ErrInsufficientUsdbOutput);
-
-        let mintAmount = if(aumInUsdx == 0) { usdxAmount } else { usdxAmount * blpSupply/ aumInUsdx };
-        assert!(mintAmount >= minGlp, ErrInsufficientGlpOutput);
-
-        let sender = sender(ctx);
-
-        coin::mint_and_transfer(option::borrow_mut(&mut registry.blpTreasuryCap), (mintAmount as u64), sender, ctx);
-
-        if(!table::contains(&registry.lastAddedAt, sender))
-            table::add(&mut registry.lastAddedAt, sender, (clock::timestamp_ms(sclock) as u128));
-
-        event::emit(AddLiquidityEvent {
-            account: sender,
-            token: type_name::get<TOKEN>(),
-            amount,
-            aumInUsdb: aumInUsdx,
-            blpSupply,
-            usdbAmount: usdxAmount,
-            mintAmount
-        });
-
-        mintAmount;
     }
 
     ///
@@ -154,41 +123,11 @@ module bean::blp_manager {
     ///     - user get back token & fee
     ///
     public entry fun removeLiquidity<TOKEN>(blpToken: Coin<BLP>,
-                                            minOut: u128,
+                                            minTokenOut: u128,
                                             registry: &mut BlpManagerReg,
                                             xvault: &mut XVault,
                                             sclock: &Clock,
                                             ctx: &mut TxContext){
-        let blpAmount = (coin::value(&blpToken) as u128);
-        let senderAddr = sender(ctx);
-        assert!(blpAmount > 0, ErrInvalidAmt);
-        assert!(*table::borrow(&registry.lastAddedAt, senderAddr) + registry.cooldownDuration <= (clock::timestamp_ms(sclock)/1000 as u128), ErrCooldownNotPassed);
-        let aumInUsdx = getAumInUsdb(false);
-        let  blpSupply = (coin::total_supply(option::borrow(&registry.blpTreasuryCap)) as u128);
-        let  usdxAmount = blpAmount * aumInUsdx/blpSupply;
-        let usdxBalance = (vault::usdbBalance(xvault));
-        let diff = ((usdxAmount - usdxBalance) as u64);
-        if(diff > 0){
-            vault::mintUsdbDebt(xvault, coin::mint(option::borrow_mut(&mut registry.usdbTreasuryCap), diff , ctx));
-        };
-
-        coin::burn(option::borrow_mut(&mut registry.blpTreasuryCap), blpToken);
-
-        let tokenOut = vault::sellUsdb<TOKEN>(xvault, ctx);
-        let amountOut = ( coin::value(&tokenOut) as u128);
-        assert!(amountOut >= minOut, ErrInsufficientOutput);
-
-        emit(RemoveLiquidityEvent{
-            account: senderAddr,
-            token: type_name::get<TOKEN>(),
-            blpAmount,
-            aumInUsdb: aumInUsdx,
-            blpSupply,
-            usdbAmount: usdxAmount,
-            amountOut
-        });
-
-        public_transfer(tokenOut, senderAddr);
     }
 
     ///
